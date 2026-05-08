@@ -7,7 +7,7 @@ interface Props {
 }
 
 export const RestaurantCard: React.FC<Props> = ({ restaurant }) => {
-  const { name, signatureMenu, priceAverage, distance, isOpen, isBreakTime } = restaurant;
+  const { name, signatureMenu, priceAverage, distance, isOpen, isBreakTime, rating } = restaurant;
 
   const renderStatusBadge = () => {
     if (isBreakTime) return <span className={`${styles.badge} ${styles.breakTime}`}>브레이크 타임</span>;
@@ -18,7 +18,10 @@ export const RestaurantCard: React.FC<Props> = ({ restaurant }) => {
   return (
     <div className={styles.card}>
       <div className={styles.header}>
-        <h3 className={styles.name}>{name}</h3>
+        <div className={styles.titleArea}>
+          <h3 className={styles.name}>{name}</h3>
+          <span className={styles.rating}>⭐ {rating.toFixed(1)}</span>
+        </div>
         {renderStatusBadge()}
       </div>
       

@@ -21,11 +21,26 @@
   margin-bottom: 12px;
 }
 
+.titleArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .name {
   margin: 0;
   font-size: 18px;
   font-weight: 700;
   color: #1a1a1a;
+}
+
+.rating {
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFB300;
+  background: #FFF8E1;
+  padding: 2px 6px;
+  border-radius: 6px;
 }
 
 .badge {
