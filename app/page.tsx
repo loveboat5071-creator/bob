@@ -14,9 +14,11 @@ export default function Home() {
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [searchAddress, setSearchAddress] = useState('');
 
-  // 1. 사용자 현재 위치 가져오기
-  useEffect(() => {
+  const requestLocation = () => {
+    setIsLoading(true);
+    setLocationError('');
     if ('geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
@@ -27,18 +29,24 @@ export default function Home() {
           setIsLoading(false);
         },
         (error) => {
-          console.error("위치 정보를 가져오는데 실패했습니다:", error);
-          setLocationError("위치 정보를 가져올 수 없어 기본 위치(강남역)로 보여집니다.");
-          setLocation({ lat: 37.498095, lng: 127.027610 }); // 강남역
+          console.error("위치 정보 오류:", error);
+          let msg = "위치 정보를 가져올 수 없습니다. 브라우저 설정에서 위치 권한을 허용해 주세요.";
+          if (error.code === 1) msg = "위치 권한이 거부되었습니다. 주소를 직접 입력하거나 권한을 허용해 주세요.";
+          setLocationError(msg);
+          setLocation({ lat: 37.498095, lng: 127.027610 }); // 강남역 기본값
           setIsLoading(false);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       setLocationError("이 브라우저는 위치 정보를 지원하지 않습니다.");
       setLocation({ lat: 37.498095, lng: 127.027610 });
       setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    requestLocation();
   }, []);
 
   // 2. 위치, 반경, 정렬 기준이 바뀔 때마다 식당 목록 업데이트
@@ -49,16 +57,43 @@ export default function Home() {
     }
   }, [radius, sortBy, location]);
 
+  const handleAddressSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchAddress.trim()) return;
+
+    setIsLoading(true);
+    try {
+      // 카카오 키워드 검색 API를 사용하여 주소의 좌표를 가져옴 (프록시 API 사용 가능하나 여기서는 단순 구현을 위해)
+      const res = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(searchAddress)}`, {
+        headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY || ''}` }
+      });
+      const data = await res.json();
+      if (data.documents && data.documents.length > 0) {
+        const first = data.documents[0];
+        setLocation({ lat: parseFloat(first.y), lng: parseFloat(first.x) });
+        setLocationError(`'${first.place_name}' 기준으로 검색합니다.`);
+      } else {
+        setLocationError("검색 결과가 없습니다.");
+      }
+    } catch (err) {
+      console.error(err);
+      setLocationError("주소 검색 중 오류가 발생했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleRandomPick = () => {
     if (!isRandomMode) {
       setRestaurants(prev => getRandomPicks(prev, 3));
       setIsRandomMode(true);
     } else if (location) {
-      // 복구
+      setIsLoading(true);
       fetchAndSortRestaurants(location.lat, location.lng, radius, sortBy)
         .then(data => {
           setRestaurants(data);
           setIsRandomMode(false);
+          setIsLoading(false);
         });
     }
   };
@@ -69,6 +104,19 @@ export default function Home() {
         <h1>오점뭐</h1>
         <p>오늘 점심 뭐 먹지? 반경 500m 내 초근접성 솔루션</p>
       </header>
+
+      <section className="location-search">
+        <form onSubmit={handleAddressSearch} className="address-form">
+          <input 
+            type="text" 
+            placeholder="주소나 지하철역 입력 (예: 역삼역)" 
+            value={searchAddress}
+            onChange={(e) => setSearchAddress(e.target.value)}
+          />
+          <button type="submit">검색</button>
+        </form>
+        <button onClick={requestLocation} className="btn-retry">내 위치 재설정</button>
+      </section>
 
       <section className="controls">
         <div className="control-group">

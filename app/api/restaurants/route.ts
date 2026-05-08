@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { scrapeInfoFromDaum } from '@/utils/scraper';
+import { scrapeInfoFromNaver } from '@/utils/scraper';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -43,8 +43,8 @@ export async function GET(request: Request) {
         const addressParts = doc.address_name.split(' ');
         const region = addressParts[1] || ''; // '강남구' 등 구 단위 지역명 추출
 
-        // 실시간 스크래핑 수행
-        const scraped = await scrapeInfoFromDaum(doc.place_name, region);
+        // 실시간 네이버 스크래핑 수행
+        const scraped = await scrapeInfoFromNaver(doc.place_name, region);
 
         return {
           id: doc.id,

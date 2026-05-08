@@ -6,9 +6,9 @@ export interface ScrapedInfo {
   rating: number;
 }
 
-export async function scrapeInfoFromDaum(placeName: string, region: string): Promise<ScrapedInfo | null> {
-  const query = encodeURIComponent(`${placeName} ${region} 메뉴`);
-  const url = `https://search.daum.net/search?w=tot&q=${query}`;
+export async function scrapeInfoFromNaver(placeName: string, region: string): Promise<ScrapedInfo | null> {
+  const query = encodeURIComponent(`${placeName} ${region}`);
+  const url = `https://search.naver.com/search.naver?query=${query}`;
 
   try {
     const response = await fetch(url, {
@@ -26,33 +26,31 @@ export async function scrapeInfoFromDaum(placeName: string, region: string): Pro
     let price = 0;
     let rating = 0;
 
-    // 1. 장소 정보가 포함된 영역을 찾음
-    const placeCard = $('.wrap_place, .coll_cont').first();
+    // 네이버 스마트플레이스 영역 타겟팅
+    const placeSection = $('.api_subject_bx, #_pc_common_business_wrapper, ._au_place_list').first();
 
-    // 2. 평점 추출 시도
-    const ratingText = placeCard.find('.rating .txt_num, .score .txt_num, .txt_score').first().text().trim();
-    rating = parseFloat(ratingText) || 0;
+    // 1. 평점 추출
+    const ratingText = placeSection.find('.rating, .score, ._rating').text().replace(/[^0-9.]/g, '').trim();
+    rating = parseFloat(ratingText.split(' ')[0]) || 0;
+
+    // 2. 메뉴 및 가격 추출
+    // 네이버는 메뉴 정보가 복잡한 구조로 되어 있는 경우가 많음
+    const menuList = placeSection.find('.list_menu li, .menu_item, ._menu_item');
     
-    // 2. 메뉴명과 가격 추출 시도
-    // Daum 검색 결과의 '장소' 탭이나 미니 카드 구조를 타겟팅
-    const menuItems = placeCard.find('.list_menu li, .item_menu');
-    
-    if (menuItems.length > 0) {
-      const firstItem = $(menuItems[0]);
-      menuName = firstItem.find('.txt_menu, .tit_item, .tit_name').text().trim();
-      const priceText = firstItem.find('.txt_price, .txt_info, .price').text().trim();
+    if (menuList.length > 0) {
+      const firstMenu = $(menuList[0]);
+      menuName = firstMenu.find('.name, .tit, ._name').text().trim();
+      const priceText = firstMenu.find('.price, ._price').text().trim();
       price = parseInt(priceText.replace(/[^0-9]/g, '')) || 0;
     }
 
-    // 만약 위에서 못찾았다면 전체 문서에서 가장 그럴듯한 첫 번째 메뉴 가격 쌍을 찾음
+    // 대체 수단: 전체 텍스트에서 검색
     if (!menuName) {
-      $('.list_menu li').each((_, el) => {
-        const name = $(el).find('.txt_menu, .tit_item').text().trim();
-        const pText = $(el).find('.txt_price, .price').text().trim();
-        if (name && !menuName) {
-          menuName = name;
-          price = parseInt(pText.replace(/[^0-9]/g, '')) || 0;
-          return false;
+      $('.name, ._name').each((_, el) => {
+        const text = $(el).text().trim();
+        if (text.length > 1 && text.length < 20) {
+           menuName = text;
+           return false;
         }
       });
     }
