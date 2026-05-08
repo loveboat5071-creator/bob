@@ -6,7 +6,6 @@ export async function fetchAndSortRestaurants(
   radius: RadiusOption,
   sortBy: SortCriterion
 ): Promise<Restaurant[]> {
-  
   try {
     const res = await fetch(`/api/restaurants?lat=${latitude}&lng=${longitude}&radius=${radius}`);
     
@@ -18,15 +17,12 @@ export async function fetchAndSortRestaurants(
     const json = await res.json();
     let fetchedData: Restaurant[] = json.data || [];
 
-    // 2. 3단 정렬 엔진 (거리는 이미 카카오API에서 정렬되어 올 수 있지만, 여기서 다시 한 번 보장)
     fetchedData.sort((a, b) => {
       switch (sortBy) {
         case 'distance':
           return a.distance - b.distance;
-        case 'rating':
-          return b.rating - a.rating; // (카카오 API에서는 기본 제공 안됨)
-        case 'price':
-          return a.priceAverage - b.priceAverage; // (카카오 API에서는 기본 제공 안됨)
+        case 'name':
+          return a.name.localeCompare(b.name);
         default:
           return a.distance - b.distance;
       }

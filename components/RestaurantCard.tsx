@@ -7,38 +7,36 @@ interface Props {
 }
 
 export const RestaurantCard: React.FC<Props> = ({ restaurant }) => {
-  const { name, signatureMenu, priceAverage, distance, isOpen, isBreakTime, rating } = restaurant;
-
-  const renderStatusBadge = () => {
-    if (isBreakTime) return <span className={`${styles.badge} ${styles.breakTime}`}>브레이크 타임</span>;
-    if (!isOpen) return <span className={`${styles.badge} ${styles.closed}`}>영업 종료</span>;
-    return <span className={`${styles.badge} ${styles.open}`}>영업 중</span>;
-  };
+  const { name, category, phone, distance, placeUrl, address } = restaurant;
 
   return (
-    <div className={styles.card}>
-      <div className={styles.header}>
-        <div className={styles.titleArea}>
+    <a href={placeUrl} target="_blank" rel="noopener noreferrer" className={styles.cardLink}>
+      <div className={styles.card}>
+        <div className={styles.header}>
           <h3 className={styles.name}>{name}</h3>
-          <span className={styles.rating}>⭐ {rating.toFixed(1)}</span>
+          <span className={styles.categoryBadge}>{category}</span>
         </div>
-        {renderStatusBadge()}
-      </div>
-      
-      <div className={styles.details}>
-        <div className={styles.infoRow}>
-          <span className={styles.icon}>🍽️</span>
-          <span className={styles.menuName}>{signatureMenu}</span>
+        
+        <div className={styles.details}>
+          {address && (
+            <div className={styles.infoRow}>
+              <span className={styles.icon}>📍</span>
+              <span>{address}</span>
+            </div>
+          )}
+          {phone && (
+            <div className={styles.infoRow}>
+              <span className={styles.icon}>📞</span>
+              <span>{phone}</span>
+            </div>
+          )}
         </div>
-        <div className={styles.infoRow}>
-          <span className={styles.icon}>💰</span>
-          <span className={styles.price}>{priceAverage.toLocaleString()}원</span>
+        
+        <div className={styles.footer}>
+          <span className={styles.distance}>🚶 {distance}m</span>
+          <span className={styles.viewDetail}>메뉴·가격 보기 →</span>
         </div>
       </div>
-      
-      <div className={styles.footer}>
-        <span className={styles.distance}>📍 내 위치에서 {distance}m</span>
-      </div>
-    </div>
+    </a>
   );
 };

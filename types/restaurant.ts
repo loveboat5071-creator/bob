@@ -3,12 +3,12 @@ export interface Restaurant {
   name: string;
   category: string;
   distance: number;
-  rating: number;
-  priceAverage: number;
-  signatureMenu: string;
+  phone: string;
+  address: string;
+  placeUrl: string;
   isOpen: boolean;
   isBreakTime: boolean;
 }
 
-export type SortCriterion = 'distance' | 'rating' | 'price';
+export type SortCriterion = 'distance' | 'name';
 export type RadiusOption = 50 | 100 | 150 | 200 | 250 | 300 | 400 | 500;

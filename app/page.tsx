@@ -63,10 +63,7 @@ export default function Home() {
 
     setIsLoading(true);
     try {
-      // 카카오 키워드 검색 API를 사용하여 주소의 좌표를 가져옴 (프록시 API 사용 가능하나 여기서는 단순 구현을 위해)
-      const res = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(searchAddress)}`, {
-        headers: { Authorization: `KakaoAK ${process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY || ''}` }
-      });
+      const res = await fetch(`/api/geocode?query=${encodeURIComponent(searchAddress)}`);
       const data = await res.json();
       if (data.documents && data.documents.length > 0) {
         const first = data.documents[0];
@@ -137,8 +134,7 @@ export default function Home() {
           <label>정렬 기준</label>
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortCriterion)}>
             <option value="distance">거리순</option>
-            <option value="rating">평점순</option>
-            <option value="price">가격순</option>
+            <option value="name">이름순</option>
           </select>
         </div>
       </section>
