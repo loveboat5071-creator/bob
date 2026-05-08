@@ -36,17 +36,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch from Kakao API' }, { status: response.status });
     }
 
-    // 카카오 API 응답을 기반으로 상세 정보 스크래핑 (병렬 처리)
-    const restaurants = await Promise.all(
-      data.documents.map(async (doc: any) => {
+    // 카카오 API 응답을 기반으로 상세 정보 스크래핑 (봇 탐지 회피를 위해 순차 처리 및 지연 시간 도입)
+    const restaurants = [];
+    for (const doc of data.documents) {
         const category = doc.category_name.split(' > ').pop() || doc.category_group_name;
         const addressParts = doc.address_name.split(' ');
-        const region = addressParts[1] || ''; // '강남구' 등 구 단위 지역명 추출
+        const region = addressParts[1] || '';
 
-        // 실시간 네이버 스크래핑 수행
-        const scraped = await scrapeInfoFromNaver(doc.place_name, region);
-
-        return {
+        const scraped = await scrapeInfoFromNaver(doc.place_name, region, doc.phone);
+        
+        restaurants.push({
           id: doc.id,
           name: doc.place_name,
           category: category,
@@ -56,9 +55,11 @@ export async function GET(request: Request) {
           signatureMenu: scraped?.menuName || '정보 없음',
           isOpen: true, 
           isBreakTime: false
-        };
-      })
-    );
+        });
+
+        // 0.1초~0.3초 사이의 미세한 지연 (봇 탐지 회피용)
+        await new Promise(resolve => setTimeout(resolve, 100 + Math.random() * 200));
+    }
 
     return NextResponse.json({ data: restaurants });
   } catch (error) {
