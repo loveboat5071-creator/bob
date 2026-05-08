@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { scrapeInfoFromDaum } from '@/utils/scraper';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -35,40 +36,29 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Failed to fetch from Kakao API' }, { status: response.status });
     }
 
-    // 카테고리 기반 임의 메뉴/가격 생성 함수 (API에서 제공하지 않으므로 Mocking)
-    const generateMockDetails = (category: string) => {
-      const rating = (Math.random() * (4.9 - 3.5) + 3.5).toFixed(1);
-      const price = Math.floor(Math.random() * (15 - 7 + 1) + 7) * 1000;
-      
-      let menu = '대표 메뉴 (현장 확인)';
-      if (category.includes('한식')) menu = '김치찌개 정식';
-      else if (category.includes('중식')) menu = '짜장면/짬뽕';
-      else if (category.includes('일식')) menu = '초밥/돈가스';
-      else if (category.includes('양식')) menu = '파스타/스테이크';
-      else if (category.includes('분식')) menu = '떡볶이/김밥';
-      else if (category.includes('카페')) menu = '아메리카노';
-      else if (category.includes('패스트푸드')) menu = '버거 세트';
+    // 카카오 API 응답을 기반으로 상세 정보 스크래핑 (병렬 처리)
+    const restaurants = await Promise.all(
+      data.documents.map(async (doc: any) => {
+        const category = doc.category_name.split(' > ').pop() || doc.category_group_name;
+        const addressParts = doc.address_name.split(' ');
+        const region = addressParts[1] || ''; // '강남구' 등 구 단위 지역명 추출
 
-      return { rating: Number(rating), price, menu };
-    };
+        // 실시간 스크래핑 수행
+        const scraped = await scrapeInfoFromDaum(doc.place_name, region);
 
-    // 카카오 API 응답을 우리 앱의 Restaurant 타입에 맞게 매핑
-    const restaurants = data.documents.map((doc: any) => {
-      const category = doc.category_name.split(' > ').pop() || doc.category_group_name;
-      const mock = generateMockDetails(category);
-      
-      return {
-        id: doc.id,
-        name: doc.place_name,
-        category: category,
-        distance: parseInt(doc.distance, 10),
-        rating: mock.rating,
-        priceAverage: mock.price,
-        signatureMenu: mock.menu,
-        isOpen: true, // 영업 상태 실시간 확인 불가 (일단 true)
-        isBreakTime: false
-      };
-    });
+        return {
+          id: doc.id,
+          name: doc.place_name,
+          category: category,
+          distance: parseInt(doc.distance, 10),
+          rating: scraped?.rating || 0,
+          priceAverage: scraped?.price || 0,
+          signatureMenu: scraped?.menuName || '정보 없음',
+          isOpen: true, 
+          isBreakTime: false
+        };
+      })
+    );
 
     return NextResponse.json({ data: restaurants });
   } catch (error) {
