@@ -18,15 +18,13 @@ export async function GET(request: Request) {
   try {
     let allDocuments: any[] = [];
     
-    // 카카오 카테고리 검색은 최대 45페이지까지 지원합니다.
-    // 성능과 누락 방지를 위해 30페이지(450개)를 병렬로 한꺼번에 가져옵니다. 
-    // 이를 통해 500m 반경 내 수백 개의 식당이 있는 초밀집 지역에서도 누락 없이 모든 데이터를 확보할 수 있습니다.
-    const pageRanges = Array.from({ length: 30 }, (_, i) => i + 1);
+    // 카카오 API의 결과 제한(한 호출당 최대 45~675개)을 우회하기 위해 
+    // 여러 개의 핵심 키워드를 병렬로 검색하여 데이터를 합칩니다.
+    const keywords = ['식당', '맛집', '음식점', '밥집'];
+    const pageRanges = [1, 2, 3]; // 각 키워드당 3페이지씩 (45개씩) -> 총 180개 후보 확보
     
-    const fetchPage = async (page: number) => {
-      // category.json 대신 keyword.json을 사용하여 더 많은 결과(최대 45페이지)를 가져올 수 있도록 함
-      // query 파라미터가 필수이므로 '식당'으로 설정하고 category_group_code를 FD6(음식점)으로 지정
-      const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('식당')}&category_group_code=FD6&y=${lat}&x=${lng}&radius=${radius}&sort=distance&size=15&page=${page}`;
+    const fetchKeywordPage = async (query: string, page: number) => {
+      const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&category_group_code=FD6&y=${lat}&x=${lng}&radius=${radius}&sort=distance&size=15&page=${page}`;
       const response = await fetch(url, {
         headers: { Authorization: `KakaoAK ${KAKAO_API_KEY}` },
         cache: 'no-store'
@@ -36,8 +34,15 @@ export async function GET(request: Request) {
       return data.documents || [];
     };
 
-    const results = await Promise.all(pageRanges.map(page => fetchPage(page)));
-    allDocuments = results.flat();
+    const searchTasks = [];
+    for (const kw of keywords) {
+      for (const pg of pageRanges) {
+        searchTasks.push(fetchKeywordPage(kw, pg));
+      }
+    }
+
+    const allResults = await Promise.all(searchTasks);
+    allDocuments = allResults.flat();
 
     // 중복 데이터 제거 (id 기준)
     const uniqueDocuments = Array.from(new Map(allDocuments.map(doc => [doc.id, doc])).values());
@@ -63,7 +68,13 @@ export async function GET(request: Request) {
         isBreakTime: false
       }));
 
-    return NextResponse.json({ data: filteredRestaurants });
+    return NextResponse.json({ 
+      data: filteredRestaurants,
+      meta: {
+        total: filteredRestaurants.length,
+        radius_applied: radius
+      }
+    });
   } catch (error) {
     console.error('API Route Error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
