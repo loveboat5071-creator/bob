@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { RestaurantCard } from '../components/RestaurantCard';
 import { fetchAndSortRestaurants } from '../utils/api';
 import { getRandomPicks } from '../utils/randomPick';
@@ -101,6 +102,24 @@ export default function Home() {
         <h1>오점뭐</h1>
         <p>오늘 점심 뭐 먹지? 반경 500m 내 초근접성 솔루션</p>
       </header>
+
+      <div style={{ marginBottom: '24px' }}>
+        <Link href="/room/new" style={{
+          display: 'block',
+          width: '100%',
+          padding: '16px',
+          background: 'linear-gradient(135deg, #FF5A5F, #FF1744)',
+          color: 'white',
+          textAlign: 'center',
+          borderRadius: '12px',
+          fontWeight: 'bold',
+          fontSize: '16px',
+          textDecoration: 'none',
+          boxShadow: '0 4px 15px rgba(255, 90, 95, 0.3)'
+        }}>
+          👥 동료들과 실시간 식당 투표 방 만들기
+        </Link>
+      </div>
 
       <section className="location-search">
         <form onSubmit={handleAddressSearch} className="address-form">
