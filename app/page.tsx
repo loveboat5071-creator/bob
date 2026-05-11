@@ -18,6 +18,7 @@ export default function Home() {
   const [locationError, setLocationError] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [searchAddress, setSearchAddress] = useState('');
+  const [visibleCount, setVisibleCount] = useState(15); // 더보기 기능 (기본 15개)
 
   const requestLocation = () => {
     setIsLoading(true);
@@ -55,10 +56,13 @@ export default function Home() {
   // 2. 위치, 반경, 정렬 기준이 바뀔 때마다 식당 목록 업데이트
   useEffect(() => {
     if (location) {
+      setIsLoading(true);
       fetchAndSortRestaurants(location.lat, location.lng, radius, sortBy)
         .then(data => {
           setRestaurants(data);
           setGlobalRestaurants(data);
+          setVisibleCount(15); // 조건 변경 시 보이는 개수 초기화
+          setIsLoading(false);
         });
     }
   }, [radius, sortBy, location, setGlobalRestaurants]);
@@ -175,10 +179,37 @@ export default function Home() {
         ) : (
           <>
             {locationError && <div style={{ color: '#C62828', fontSize: '13px', textAlign: 'center', marginBottom: '12px', background: '#FFEBEE', padding: '8px', borderRadius: '8px' }}>{locationError}</div>}
+            
+            <div style={{ marginBottom: '12px', fontSize: '14px', color: '#666', textAlign: 'right' }}>
+              총 <strong>{restaurants.length}</strong>개의 식당 발견
+            </div>
+
             {restaurants.length > 0 ? (
-              restaurants.map(rest => (
-                <RestaurantCard key={rest.id} restaurant={rest} />
-              ))
+              <>
+                {restaurants.slice(0, visibleCount).map(rest => (
+                  <RestaurantCard key={rest.id} restaurant={rest} />
+                ))}
+                
+                {visibleCount < restaurants.length && (
+                  <button 
+                    onClick={() => setVisibleCount(prev => prev + 15)}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      background: '#f8f9fa',
+                      border: '1px solid #ddd',
+                      borderRadius: '12px',
+                      color: '#555',
+                      fontWeight: 'bold',
+                      fontSize: '15px',
+                      cursor: 'pointer',
+                      marginTop: '16px'
+                    }}
+                  >
+                    더 보기 ({visibleCount} / {restaurants.length})
+                  </button>
+                )}
+              </>
             ) : (
               <div className="empty-state">해당 반경 내에 검색된 식당이 없습니다.</div>
             )}

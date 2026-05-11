@@ -18,29 +18,32 @@ export async function GET(request: Request) {
   try {
     let allDocuments: any[] = [];
     
-    // 카카오 카테고리 검색은 최대 3페이지(각 15개)까지 제공함
-    for (let page = 1; page <= 3; page++) {
+    // 카카오 카테고리 검색은 최대 45페이지까지 지원합니다.
+    // 성능과 누락 방지를 위해 30페이지(450개)를 병렬로 한꺼번에 가져옵니다. 
+    // 이를 통해 500m 반경 내 수백 개의 식당이 있는 초밀집 지역에서도 누락 없이 모든 데이터를 확보할 수 있습니다.
+    const pageRanges = Array.from({ length: 30 }, (_, i) => i + 1);
+    
+    const fetchPage = async (page: number) => {
       const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&y=${lat}&x=${lng}&radius=${radius}&sort=distance&size=15&page=${page}`;
-
       const response = await fetch(url, {
         headers: { Authorization: `KakaoAK ${KAKAO_API_KEY}` },
         cache: 'no-store'
       });
-
-      if (!response.ok) break;
-
+      if (!response.ok) return [];
       const data = await response.json();
-      if (data.documents) {
-        allDocuments = [...allDocuments, ...data.documents];
-      }
-      
-      if (data.meta?.is_end) break;
-    }
+      return data.documents || [];
+    };
+
+    const results = await Promise.all(pageRanges.map(page => fetchPage(page)));
+    allDocuments = results.flat();
+
+    // 중복 데이터 제거 (id 기준)
+    const uniqueDocuments = Array.from(new Map(allDocuments.map(doc => [doc.id, doc])).values());
 
     // "밥집만" 나오게 필터링 (카페, 술집 등 제외)
     const excludeKeywords = ['카페', '커피', '전문점', '주점', '술집', '보드게임', '디저트', '베이커리'];
     
-    const filteredRestaurants = allDocuments
+    const filteredRestaurants = uniqueDocuments
       .filter((doc: any) => {
         const fullCategory = doc.category_name || '';
         // 카테고리 명칭에 제외 키워드가 포함되지 않은 것만 필터링
