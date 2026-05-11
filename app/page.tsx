@@ -5,12 +5,14 @@ import Link from 'next/link';
 import { RestaurantCard } from '../components/RestaurantCard';
 import { fetchAndSortRestaurants } from '../utils/api';
 import { getRandomPicks } from '../utils/randomPick';
+import { useRestaurantStore } from '../store/restaurantStore';
 import { Restaurant, RadiusOption, SortCriterion } from '../types/restaurant';
 
 export default function Home() {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [radius, setRadius] = useState<RadiusOption>(150);
   const [sortBy, setSortBy] = useState<SortCriterion>('distance');
+  const setGlobalRestaurants = useRestaurantStore((state) => state.setRestaurants);
   const [isRandomMode, setIsRandomMode] = useState(false);
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
   const [locationError, setLocationError] = useState<string>('');
@@ -54,9 +56,12 @@ export default function Home() {
   useEffect(() => {
     if (location) {
       fetchAndSortRestaurants(location.lat, location.lng, radius, sortBy)
-        .then(data => setRestaurants(data));
+        .then(data => {
+          setRestaurants(data);
+          setGlobalRestaurants(data);
+        });
     }
-  }, [radius, sortBy, location]);
+  }, [radius, sortBy, location, setGlobalRestaurants]);
 
   const handleAddressSearch = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '../../../utils/supabase';
 import confetti from 'canvas-confetti';
+import { useRestaurantStore } from '../../../store/restaurantStore';
 
 interface Room {
   id: string;
@@ -46,6 +47,10 @@ export default function RoomPage() {
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [showManualSearch, setShowManualSearch] = useState(false);
+
+  // 전역 상태 (메인 화면에서 불러온 주변 식당)
+  const nearbyRestaurants = useRestaurantStore((state) => state.restaurants);
 
   useEffect(() => {
     // 세션 초기화
@@ -259,41 +264,90 @@ export default function RoomPage() {
       {/* 후보 추가 영역 */}
       {room.status === 'voting' && (
         <div style={{ background: 'white', padding: '16px', borderRadius: '16px', marginBottom: '24px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input 
-              type="text" 
-              placeholder="먹고 싶은 식당 이름 검색 (또는 직접 입력)" 
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
-              style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ccc' }}
-            />
-            <button type="submit" style={{ padding: '0 16px', background: '#FF5A5F', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold' }}>
-              검색
-            </button>
-          </form>
-
-          {isSearching && <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>검색 중...</div>}
-
-          {searchResults.length > 0 && (
-            <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px' }}>
-              {searchResults.map((place, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #eee' }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#333' }}>📍 주변 식당에서 빠르게 추가하기</h3>
+          
+          {nearbyRestaurants.length > 0 ? (
+            <div style={{ display: 'flex', overflowX: 'auto', gap: '12px', paddingBottom: '12px', marginBottom: '8px' }}>
+              {nearbyRestaurants.map((rest) => (
+                <div key={rest.id} style={{ 
+                  flex: '0 0 160px', 
+                  border: '1px solid #eee', 
+                  borderRadius: '12px', 
+                  padding: '12px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}>
                   <div>
-                    <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{place.place_name}</div>
-                    <div style={{ fontSize: '12px', color: '#888' }}>{place.address_name}</div>
+                    <div style={{ fontWeight: 'bold', fontSize: '14px', marginBottom: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rest.name}</div>
+                    <div style={{ fontSize: '12px', color: '#888' }}>{rest.category}</div>
+                    <div style={{ fontSize: '11px', color: '#aaa', marginBottom: '12px' }}>{rest.distance}m</div>
                   </div>
-                  <button onClick={() => addCandidate(place)} style={{ padding: '6px 12px', background: '#f0f0f0', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
-                    후보 등록
+                  <button 
+                    onClick={() => addCandidate({ place_name: rest.name, road_address_name: rest.address, place_url: rest.placeUrl })} 
+                    style={{ width: '100%', padding: '8px', background: '#f0f0f0', color: '#333', borderRadius: '8px', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    [+] 후보로 추가
                   </button>
                 </div>
               ))}
             </div>
+          ) : (
+            <div style={{ fontSize: '13px', color: '#888', marginBottom: '16px', textAlign: 'center', padding: '20px 0' }}>
+              주변 식당 데이터가 없습니다.<br/>(메인 화면에서 먼저 위치를 검색해주세요)
+            </div>
           )}
-          
-          {searchKeyword.trim() && searchResults.length === 0 && !isSearching && (
-             <button onClick={() => addCandidate()} style={{ width: '100%', padding: '10px', background: '#f8f9fa', border: '1px dashed #ccc', borderRadius: '8px', color: '#555', cursor: 'pointer' }}>
-               "{searchKeyword}" 직접 후보로 등록하기
-             </button>
+
+          {!showManualSearch ? (
+            <button 
+              onClick={() => setShowManualSearch(true)}
+              style={{ width: '100%', padding: '10px', background: 'transparent', border: 'none', color: '#888', textDecoration: 'underline', fontSize: '13px', cursor: 'pointer' }}
+            >
+              원하는 식당이 없나요? 직접 입력하기
+            </button>
+          ) : (
+            <div style={{ marginTop: '12px', borderTop: '1px dashed #eee', paddingTop: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <h4 style={{ fontSize: '14px', color: '#555', margin: 0 }}>직접 검색하여 추가</h4>
+                <button onClick={() => setShowManualSearch(false)} style={{ background: 'none', border: 'none', fontSize: '12px', color: '#888', cursor: 'pointer' }}>닫기</button>
+              </div>
+              <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <input 
+                  type="text" 
+                  placeholder="먹고 싶은 식당 이름 검색 (또는 직접 입력)" 
+                  value={searchKeyword}
+                  onChange={e => setSearchKeyword(e.target.value)}
+                  style={{ flex: 1, padding: '12px', borderRadius: '8px', border: '1px solid #ccc' }}
+                />
+                <button type="submit" style={{ padding: '0 16px', background: '#FF5A5F', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 'bold' }}>
+                  검색
+                </button>
+              </form>
+
+              {isSearching && <div style={{ fontSize: '13px', color: '#666', marginBottom: '12px' }}>검색 중...</div>}
+
+              {searchResults.length > 0 && (
+                <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px' }}>
+                  {searchResults.map((place, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px', borderBottom: '1px solid #eee' }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '14px' }}>{place.place_name}</div>
+                        <div style={{ fontSize: '12px', color: '#888' }}>{place.address_name}</div>
+                      </div>
+                      <button onClick={() => addCandidate(place)} style={{ padding: '6px 12px', background: '#f0f0f0', borderRadius: '6px', border: 'none', fontSize: '12px', fontWeight: 'bold', cursor: 'pointer' }}>
+                        후보 등록
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {searchKeyword.trim() && searchResults.length === 0 && !isSearching && (
+                 <button onClick={() => addCandidate()} style={{ width: '100%', padding: '10px', background: '#f8f9fa', border: '1px dashed #ccc', borderRadius: '8px', color: '#555', cursor: 'pointer' }}>
+                   "{searchKeyword}" 직접 후보로 등록하기
+                 </button>
+              )}
+            </div>
           )}
         </div>
       )}
