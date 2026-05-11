@@ -24,7 +24,9 @@ export async function GET(request: Request) {
     const pageRanges = Array.from({ length: 30 }, (_, i) => i + 1);
     
     const fetchPage = async (page: number) => {
-      const url = `https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&y=${lat}&x=${lng}&radius=${radius}&sort=distance&size=15&page=${page}`;
+      // category.json 대신 keyword.json을 사용하여 더 많은 결과(최대 45페이지)를 가져올 수 있도록 함
+      // query 파라미터가 필수이므로 '식당'으로 설정하고 category_group_code를 FD6(음식점)으로 지정
+      const url = `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent('식당')}&category_group_code=FD6&y=${lat}&x=${lng}&radius=${radius}&sort=distance&size=15&page=${page}`;
       const response = await fetch(url, {
         headers: { Authorization: `KakaoAK ${KAKAO_API_KEY}` },
         cache: 'no-store'
